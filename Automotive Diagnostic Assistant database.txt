@@ -1,0 +1,39 @@
+-- Create a database
+CREATE DATABASE IF NOT EXISTS WorkshopManagement;
+USE WorkshopManagement;
+
+-- Table for Mechanical Issues
+CREATE TABLE MechanicalIssues (
+    IssueID INT PRIMARY KEY,
+    IssueDescription VARCHAR(255),
+    Solution VARCHAR(255)
+);
+
+-- Insert Mechanical Issues
+INSERT INTO MechanicalIssues VALUES
+(1, 'Excessive Friction', 'Lubricate moving parts regularly.'),
+-- ... (repeat for all 30 mechanical issues)
+
+-- Table for Electrical Issues
+CREATE TABLE ElectricalIssues (
+    IssueID INT PRIMARY KEY,
+    IssueDescription VARCHAR(255),
+    Solution VARCHAR(255)
+);
+
+-- Insert Electrical Issues
+INSERT INTO ElectricalIssues VALUES
+(1, 'Tripped Circuit Breaker', 'Identify the cause of the overload, reduce the load on the circuit, and reset the breaker.'),
+
+
+-- Table for AC Issues
+CREATE TABLE ACIssues (
+    IssueID INT PRIMARY KEY,
+    IssueDescription VARCHAR(255),
+    Solution VARCHAR(255)
+);
+
+-- Insert AC Issues
+INSERT INTO ACIssues VALUES
+(1, 'No Cooling', 'Check the thermostat settings, replace air filters, clean or replace dirty evaporator and condenser coils, and ensure proper refrigerant levels.'),
+

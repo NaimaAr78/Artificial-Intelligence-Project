@@ -1,0 +1,234 @@
+!pip install pyaudio
+!pip install spacy
+!pip install opencv-python numpy matplotlib
+!pip install SpeechRecognition==3.8.1
+
+
+
+
+
+import os
+import spacy
+import random
+import speech_recognition as sr
+import mysql.connector
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.cluster import KMeans
+
+# Load the spaCy model
+nlp = spacy.load("en_core_web_sm")
+
+try:
+    # Establish a connection to the MySQL database
+    conn = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='',
+        database='workshopmanagement'
+    )
+    cursor = conn.cursor()
+    print("Connected to the database.")
+except mysql.connector.Error as e:
+    print(f"Error connecting to the database: {e}")
+    exit()
+
+def listen_to_user():
+    recognizer = sr.Recognizer()
+
+    with sr.Microphone() as source:
+        print("Listening to user... Speak now.")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source, timeout=5)
+
+    try:
+        print("Recognizing...")
+        user_input = recognizer.recognize_google(audio)
+        print("User said:", user_input)
+        return user_input
+    except sr.UnknownValueError:
+        print("Sorry, could not understand audio. Please try again.")
+        return None
+    except sr.RequestError as e:
+        print(f"Could not request results from Google Speech Recognition service; {e}")
+        return None
+
+def get_user_input():
+    print("Welcome to the JABAL SARHAD AUTOMOTIVE DIAGNOSTIC ASSISTANT !")
+
+    while True:
+        print("Select the type of work needed:")
+        print("1. Mechanical")
+        print("2. Electrical")
+        print("3. AC")
+        print("4. Change Car Color")  # Added option for changing car color
+
+        work_type = input("Enter the corresponding number (1, 2, 3, or 4): ")
+
+        if work_type in ["1", "2", "3", "4"]:
+            break
+        else:
+            print("Invalid choice. Please choose 1, 2, 3, or 4.")
+
+    if work_type == "4":
+        return int(work_type), None  # For changing car color, no issue description needed
+
+    voice_input = input("Would you like to describe the issue verbally? (yes/no): ").lower()
+
+    if voice_input == "yes":
+        issue_description = listen_to_user()
+        if issue_description:
+            print("Description received using voice recognition:", issue_description)
+        else:
+            print("Failed to recognize audio. Please provide a description manually.")
+    else:
+        issue_description = input("Describe the issue with your car: ")
+
+    return int(work_type), issue_description
+
+def diagnose_and_solve_issue(work_type, issue_description):
+    if work_type == 1:
+        return diagnose_mechanical_issue(issue_description)
+    elif work_type == 2:
+        return diagnose_electrical_issue(issue_description)
+    elif work_type == 3:
+        return diagnose_ac_issue(issue_description)
+    elif work_type == 4:
+        return change_car_color(issue_description)
+    else:
+        return "Invalid choice. Please choose 1, 2, 3, or 4."
+
+def diagnose_mechanical_issue(issue_description):
+    # Custom logic for mechanical issue diagnosis using spaCy
+    # Here, we can define rules or patterns based on common phrases
+    doc = nlp(issue_description.lower())
+
+    # Fetch issues and solutions from the database
+    cursor.execute("SELECT IssueDescription, Solution FROM mechanicalissues")
+    issues_mapping = {issue[0].lower(): issue[1] for issue in cursor.fetchall()}
+
+    for token in doc:
+        for issue_description, solution in issues_mapping.items():
+            if token.text in issue_description:
+                return solution
+
+    return "Issue not recognized. Please provide more details."
+
+def diagnose_electrical_issue(issue_description):
+    # Custom logic for electrical issue diagnosis using spaCy
+    # Here, we can define rules or patterns based on common phrases
+    doc = nlp(issue_description.lower())
+
+    # Fetch issues and solutions from the database
+    cursor.execute("SELECT IssueDescription, Solution FROM electricalissues")
+    issues_mapping = {issue[0].lower(): issue[1] for issue in cursor.fetchall()}
+
+    for token in doc:
+        for issue_description, solution in issues_mapping.items():
+            if token.text in issue_description:
+                return solution
+
+    return "Issue not recognized. Please provide more details."
+
+def diagnose_ac_issue(issue_description):
+    # Custom logic for AC issue diagnosis using spaCy
+    # Here, we can define rules or patterns based on common phrases
+    doc = nlp(issue_description.lower())
+
+    # Fetch issues and solutions from the database
+    cursor.execute("SELECT IssueDescription, Solution FROM acissues")
+    issues_mapping = {issue[0].lower(): issue[1] for issue in cursor.fetchall()}
+
+    for token in doc:
+        for issue_description, solution in issues_mapping.items():
+            if token.text in issue_description:
+                return solution
+
+    return "Issue not recognized. Please provide more details."
+
+
+
+def change_car_color(color_description):
+    try:
+        # Replace 'path/to/your/car_image.jpg' with the actual path to the image
+        image_path = 'car3.jpg'
+
+        # Read the input image
+        img = cv2.imread(image_path)
+
+        # Check if the image is loaded successfully
+        if img is None:
+            raise Exception(f"Error: Unable to load the image at {image_path}")
+
+        # Convert BGR to RGB
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # Reshape the image to a 2D array of pixels
+        pixels = img_rgb.reshape((-1, 3))
+
+        # Apply K-means clustering to identify colors in the image
+        kmeans = KMeans(n_clusters=3)  # You may need to adjust the number of clusters
+        kmeans.fit(pixels)
+
+        # Get the cluster centers
+        centers = kmeans.cluster_centers_
+
+        # Find the cluster that corresponds to the car color
+        car_color_index = np.argmax(np.sum(centers, axis=1))
+
+        # Create a mask for the car color
+        mask = np.all(img_rgb == centers[car_color_index], axis=-1)
+
+        # Convert the mask to the correct data type
+        mask = mask.astype(np.uint8)
+
+        # Apply the mask to the original image
+        car_only = cv2.bitwise_and(img_rgb, img_rgb, mask=mask)
+
+        # Get the desired color from the user
+        desired_color = input("Enter the desired car color (e.g., red, green, blue): ").lower()
+
+        # Convert the desired color string to an RGB value
+        color_dict = {'red': [255, 0, 0], 'green': [0, 255, 0], 'blue': [0, 0, 255]}
+
+        if desired_color in color_dict:
+            # Replace the car region in the original image with the desired color
+            img_rgb[mask[:, :, None].repeat(3, axis=2)] = color_dict[desired_color]
+
+            # Display the original and modified images
+            plt.subplot(121), plt.imshow(img_rgb), plt.title('Original Image')
+            plt.subplot(122), plt.imshow(car_only), plt.title(f'Modified Image (Color: {desired_color.capitalize()})')
+            plt.show()
+
+            # Save the modified image
+            cv2.imwrite(f'modified_car_{desired_color}.jpg', cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR))
+
+            return f"Car color changed to {desired_color}. Check the modified image: modified_car_{desired_color}.jpg"
+
+        else:
+            raise Exception(f"Error: Unsupported color - {desired_color}")
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+
+
+# Get user input using the modified function
+work_type, issue_description = get_user_input()
+
+# Ensure cursor is defined before proceeding
+if 'cursor' not in locals() or cursor is None:
+    print("Error: Database connection issue.")
+    exit()
+
+# Diagnose the issue and provide a solution
+solution = diagnose_and_solve_issue(work_type, issue_description)
+
+# Close the database connection
+conn.close()
+
+# Display the result
+print("\nDiagnosis Result:")
+print(solution)
